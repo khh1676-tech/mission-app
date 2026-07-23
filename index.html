@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>미션 - 참여</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0E11">
+<!-- iOS(아이폰) 홈 화면 추가 지원 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="미션">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
@@ -955,6 +962,13 @@ function resetLogin(){
     showStaffView(name);
   }
 })();
+
+// 서비스워커 등록 - "홈 화면에 추가" 기능이 되려면 필요함
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(err=>console.error('서비스워커 등록 실패:', err));
+  });
+}
 </script>
 </body>
 </html>

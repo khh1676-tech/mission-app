@@ -672,10 +672,14 @@ async function toggleVote(){
     await manualCloseVote();
     return;
   }
+  // 새 라운드 시작 - 이전 투표 기록 초기화
+  const { error: delError } = await supabaseClient.from('votes').delete().gte('voter_id', 0);
+  if(delError){ alert('이전 투표 초기화 실패: '+delError.message); return; }
   const endAt = new Date(Date.now() + 5*60*1000).toISOString();
   const { error } = await supabaseClient.from('game_state').update({ vote_open:true, vote_end_at: endAt }).eq('id',1);
   if(error){ alert('오류: '+error.message); return; }
   await loadGameState();
+  await loadMyVote();
   renderHostVotePanel();
 }
 async function manualCloseVote(){
@@ -759,9 +763,15 @@ function renderHostQuorum(){
 async function toggleQuorumOpenHost(){
   if(!gameState){ alert('게임 정보를 아직 못 불러왔어. 새로고침 후 다시 시도해줘.'); return; }
   const newVal = !gameState.quorum_open;
+  if(newVal){
+    // 다시 열 때 - 이전 신청자 명단 초기화
+    const { error: delError } = await supabaseClient.from('quorum_applications').delete().gte('student_id', 0);
+    if(delError){ alert('이전 신청자 초기화 실패: '+delError.message); return; }
+  }
   const { error } = await supabaseClient.from('game_state').update({ quorum_open:newVal }).eq('id',1);
   if(error){ alert('오류: '+error.message); return; }
   await loadGameState();
+  await loadQuorum();
   renderHostQuorum();
 }
 async function callMeeting(){

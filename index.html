@@ -179,9 +179,7 @@ const SUPABASE_URL = 'https://biubrhuubitglljgnpgz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpdWJyaHV1Yml0Z2xsamducGd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NjMwOTYsImV4cCI6MjEwMDMzOTA5Nn0.-iB5w21yxr_xCuf5Sirm4RtR1nASvvatJYKk5goSPzc';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// 스태프 비밀번호 (나중에 바꾸고 싶으면 여기 두 값만 수정하면 돼)
-const STAFF_PASSWORD = 'staff1';   // ← 일반 스태프(경비원/NPC) 비밀번호
-const HOST_PASSWORD = 'host1';     // ← 진행자 비밀번호
+// 스태프 비밀번호는 이제 코드에 없어 — Supabase 서버 쪽 함수(verify_role_password)가 안전하게 확인해줌
 
 let selectedRole = '2';
 
@@ -215,19 +213,23 @@ async function handleLogin(){
 
   if(selectedRole === 'staff'){
     const pw = document.getElementById('login-pw').value.trim();
-    if(pw === HOST_PASSWORD){
-      localStorage.setItem('mission_role', 'host');
-      localStorage.setItem('mission_name', name);
-      showDone('진행자로 참여했어', `이름: ${name} / 역할: 진행자`);
-    } else if(pw === STAFF_PASSWORD){
-      localStorage.setItem('mission_role', 'staff');
-      localStorage.setItem('mission_name', name);
-      showDone('일반 스태프로 참여했어', `이름: ${name} / 역할: 일반 스태프`);
-    } else {
+    const { data: matchedRole, error: pwError } = await supabaseClient.rpc('verify_role_password', { input_password: pw });
+
+    if(pwError || !matchedRole){
       showError('비밀번호가 올바르지 않아');
       btn.disabled = false;
       btn.textContent = '임무 참여하기 →';
       return;
+    }
+
+    if(matchedRole === 'host'){
+      localStorage.setItem('mission_role', 'host');
+      localStorage.setItem('mission_name', name);
+      showDone('진행자로 참여했어', `이름: ${name} / 역할: 진행자`);
+    } else {
+      localStorage.setItem('mission_role', 'staff');
+      localStorage.setItem('mission_name', name);
+      showDone('일반 스태프로 참여했어', `이름: ${name} / 역할: 일반 스태프`);
     }
     btn.disabled = false;
     btn.textContent = '임무 참여하기 →';

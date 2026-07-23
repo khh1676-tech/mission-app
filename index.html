@@ -102,6 +102,12 @@
   .row-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .btn.danger-outline{background:transparent;border:1px solid var(--danger);color:var(--danger);}
   .sheet-actions{display:flex;flex-direction:column;gap:8px;}
+  .conn-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);}
+  .conn-dot{width:7px;height:7px;border-radius:50%;background:var(--escape);flex-shrink:0;}
+  .conn-badge.offline .conn-dot{background:var(--danger);}
+  .conn-badge.offline{color:var(--danger);}
+  .winner-banner{display:none;background:linear-gradient(135deg,var(--accent),#ffcf70);color:#1a1204;border-radius:14px;padding:16px;text-align:center;font-weight:800;font-size:16px;line-height:1.4;}
+  .winner-banner.show{display:block;}
   #host-checkin, #host-dashboard{display:flex;flex-direction:column;gap:16px;}
 </style>
 </head>
@@ -138,6 +144,8 @@
   <div id="view-staffview" class="hidden">
     <div class="header"><div class="eyebrow">일반 스태프 · 보기 전용</div><h2>현황 보기</h2></div>
     <div class="body">
+      <div class="conn-badge" id="conn-badge-sv"><span class="conn-dot"></span> 연결됨</div>
+      <div class="winner-banner" id="winner-banner-sv"></div>
       <div class="card" style="text-align:center;">
         <div class="label">남은 시간</div>
         <div class="timer" id="sv-game-timer">대기중</div>
@@ -172,6 +180,8 @@
   <div id="view-host" class="hidden">
     <div class="header"><div class="eyebrow">진행자 전용</div><h2>운영 콘솔</h2></div>
     <div class="body">
+      <div class="conn-badge" id="conn-badge-host"><span class="conn-dot"></span> 연결됨</div>
+      <div class="winner-banner" id="winner-banner-host"></div>
       <div class="subtabs">
         <div class="subtab active" data-sub="checkin" onclick="switchHostTab('checkin')">체크인</div>
         <div class="subtab" data-sub="dashboard" onclick="switchHostTab('dashboard')">대시보드</div>
@@ -214,6 +224,12 @@
 
       <div id="host-dashboard" class="hidden">
         <div class="card">
+          <div class="label">위험 구역</div>
+          <button class="btn danger-outline sm" onclick="handleFullReset()">🗑 전체 초기화 (모든 학생·투표·정족수 삭제)</button>
+          <div class="note">※ 리허설 끝나고 실제 게임 시작 전에 한 번만 눌러줘. 되돌릴 수 없어.</div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
           <div class="label">게임 타이머</div>
           <div id="game-setup">
             <div class="row-2">
@@ -231,14 +247,17 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" style="margin-top:16px;">
           <div class="label">아이템 확보 개수</div>
           <div style="display:flex;align-items:center;gap:12px;justify-content:center;">
             <button class="btn outline sm" style="width:44px;" onclick="adjustItemCount(-1)">−</button>
             <div style="font-size:22px;font-weight:800;font-family:'SF Mono',monospace;" id="host-item-count">0 / 6</div>
             <button class="btn outline sm" style="width:44px;" onclick="adjustItemCount(1)">＋</button>
           </div>
+          <button class="btn primary sm" id="final-mission-btn" style="margin-top:10px;" disabled onclick="finalMissionComplete()">🏆 최종 미션 완료 (시민 승리 선언)</button>
+          <div class="note">※ 아이템 6개 다 모이면 활성화돼. 강당에서 조합 완료됐을 때 눌러줘.</div>
         </div>
+
 
         <div class="stat-row three">
           <div class="stat"><div class="num" id="hd-free-count" style="color:var(--free);">0</div><div class="cap">자유</div></div>
@@ -265,6 +284,8 @@
   <div id="view-student" class="hidden">
     <div class="header"><div class="eyebrow" id="student-eyebrow">- · -</div><h2>실시간 현황</h2></div>
     <div class="body">
+      <div class="conn-badge" id="conn-badge-student"><span class="conn-dot"></span> 연결됨</div>
+      <div class="winner-banner" id="winner-banner-student"></div>
       <div class="card" style="text-align:center;">
         <div class="label">남은 시간</div>
         <div class="timer" id="student-game-timer">대기중</div>
@@ -334,6 +355,16 @@
     <h3>의회가 소집되었습니다</h3>
     <p>정족수 10명이 채워져 회의가 시작돼요.<br>강당으로 모여주세요.</p>
     <button class="btn primary" onclick="closeMeetingModal()">확인</button>
+  </div>
+</div>
+
+<!-- 승리 결과 알림 팝업 -->
+<div class="modal-backdrop" id="winner-modal">
+  <div class="modal-box">
+    <div class="emoji" id="winner-modal-emoji">🎉</div>
+    <h3 id="winner-modal-title">게임 종료</h3>
+    <p id="winner-modal-desc"></p>
+    <button class="btn primary" onclick="closeWinnerModal()">확인</button>
   </div>
 </div>
 
@@ -483,8 +514,65 @@ function checkMeetingPopup(){
   }
   lastMeetingAt = gameState.meeting_called_at;
 }
+
+const WINNER_TEXT = {
+  citizen: { emoji:'🏆', title:'시민 승리!', desc:'아이템 6개를 모두 모아 최종 미션을 완료했어요.' },
+  sabotage: { emoji:'😈', title:'사보타지 승리!', desc:'시민 절반 이상이 강당에 갇혀버렸어요.' }
+};
+let lastWinnerAt;
+function checkWinnerPopup(){
+  if(!gameState) return;
+  if(lastWinnerAt === undefined){ lastWinnerAt = gameState.game_ended_at; return; }
+  if(gameState.game_ended_at && gameState.game_ended_at !== lastWinnerAt && gameState.winner){
+    const info = WINNER_TEXT[gameState.winner] || { emoji:'🏁', title:'게임 종료', desc:'' };
+    document.getElementById('winner-modal-emoji').textContent = info.emoji;
+    document.getElementById('winner-modal-title').textContent = info.title;
+    document.getElementById('winner-modal-desc').textContent = info.desc;
+    document.getElementById('winner-modal').classList.add('show');
+  }
+  lastWinnerAt = gameState.game_ended_at;
+}
+function closeWinnerModal(){ document.getElementById('winner-modal').classList.remove('show'); }
+function renderWinnerBanner(){
+  const info = gameState && gameState.winner ? (WINNER_TEXT[gameState.winner] || { emoji:'🏁', title:'게임 종료', desc:'' }) : null;
+  ['student','sv','host'].forEach(prefix=>{
+    const el = document.getElementById('winner-banner-'+prefix);
+    if(!el) return;
+    if(info){
+      el.classList.add('show');
+      el.innerHTML = `${info.emoji} ${info.title}<br><span style="font-weight:600;font-size:12.5px;">${info.desc}</span>`;
+    } else {
+      el.classList.remove('show');
+      el.innerHTML = '';
+    }
+  });
+  const finalBtn = document.getElementById('final-mission-btn');
+  if(finalBtn) finalBtn.disabled = !gameState || gameState.item_count < 6 || !!gameState.winner;
+}
+async function finalMissionComplete(){
+  if(!gameState || gameState.item_count < 6 || gameState.winner) return;
+  const { error } = await supabaseClient.from('game_state').update({
+    winner:'citizen', game_ended_at:new Date().toISOString(), game_running:false
+  }).eq('id',1);
+  if(error){ alert('오류: '+error.message); return; }
+  await loadGameState();
+  renderAll();
+}
+async function checkWinCondition(){
+  if(!gameState || gameState.winner) return;
+  const active = studentsCache.filter(s=>s.status!=='out');
+  const caught = active.filter(s=>s.status==='caught').length;
+  if(active.length>0 && caught >= Math.ceil(active.length/2)){
+    const { error } = await supabaseClient.from('game_state').update({
+      winner:'sabotage', game_ended_at:new Date().toISOString(), game_running:false
+    }).eq('id',1);
+    if(!error) await loadGameState();
+  }
+}
+
 function renderAll(){
   checkMeetingPopup();
+  checkWinnerPopup();
   renderMyStatus();
   renderCounts();
   renderGameTimer();
@@ -497,6 +585,7 @@ function renderAll(){
   renderItemCount();
   renderHostGameTimer();
   renderSvGameTimer();
+  renderWinnerBanner();
 }
 function renderMyStatus(){
   const me = studentsCache.find(s=>s.id===myStudentId);
@@ -624,6 +713,17 @@ function closeMeetingModal(){ document.getElementById('meeting-modal').classList
 
 // ---- 실시간 구독: 다른 사람 화면에서 바뀐 게 내 화면에도 바로 반영되게 (학생/스태프/진행자 공통) ----
 let realtimeSubscribed = false;
+function updateConnectionStatus(connected){
+  ['student','sv','host'].forEach(prefix=>{
+    const el = document.getElementById('conn-badge-'+prefix);
+    if(!el) return;
+    el.classList.toggle('offline', !connected);
+    el.innerHTML = connected ? '<span class="conn-dot"></span> 연결됨' : '<span class="conn-dot"></span> 연결 끊김 · 재시도 중';
+  });
+}
+window.addEventListener('online', ()=> updateConnectionStatus(true));
+window.addEventListener('offline', ()=> updateConnectionStatus(false));
+
 function setupRealtime(){
   if(realtimeSubscribed) return;
   realtimeSubscribed = true;
@@ -641,7 +741,9 @@ function setupRealtime(){
     .on('postgres_changes', { event:'*', schema:'public', table:'votes' }, ()=>{
       renderHostVotePanel();
     })
-    .subscribe();
+    .subscribe((status)=>{
+      updateConnectionStatus(status === 'SUBSCRIBED');
+    });
 }
 
 // ===== 진행자 / 일반 스태프 화면 진입 =====
@@ -813,6 +915,7 @@ async function setStudentStatus(newStatus){
   if(error){ alert('상태 변경 실패: '+error.message); }
   closeStatusSheet();
   await loadStudents();
+  await checkWinCondition();
   renderAll();
 }
 
@@ -947,6 +1050,31 @@ function renderSvGameTimer(){
   }
   tick();
   svGameTimerInterval = setInterval(tick,1000);
+}
+
+async function handleFullReset(){
+  const ok = confirm('정말 전체 초기화할까?\n\n모든 학생 참여 기록, 투표 결과, 정족수 신청이 다 삭제되고 게임 상태(타이머/아이템/투표/정족수)도 처음 값으로 돌아가.\n되돌릴 수 없어 — 리허설 끝나고 실제 게임 시작 직전에만 눌러줘.');
+  if(!ok) return;
+  try{
+    await supabaseClient.from('students').delete().gte('id', 0);
+    await supabaseClient.from('votes').delete().gte('voter_id', 0);
+    await supabaseClient.from('quorum_applications').delete().gte('student_id', 0);
+    const { error } = await supabaseClient.from('game_state').update({
+      game_running:false, game_paused:false, game_end_at:null, game_remaining_seconds:null,
+      vote_open:false, vote_end_at:null, quorum_open:true, item_count:0,
+      meeting_called_at:null, winner:null, game_ended_at:null
+    }).eq('id',1);
+    if(error){ alert('초기화 중 오류: '+error.message); return; }
+    lastMeetingAt = undefined;
+    lastWinnerAt = undefined;
+    await loadGameState();
+    await loadStudents();
+    await loadQuorum();
+    renderAll();
+    alert('전체 초기화 완료했어.');
+  } catch(err){
+    alert('초기화 중 오류가 발생했어: '+err.message);
+  }
 }
 
 function resetLogin(){

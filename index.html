@@ -445,7 +445,8 @@ async function refreshAll(){
   renderAll();
 }
 async function loadGameState(){
-  const { data } = await supabaseClient.from('game_state').select('*').eq('id',1).single();
+  const { data, error } = await supabaseClient.from('game_state').select('*').eq('id',1).single();
+  if(error) console.error('게임 상태 불러오기 실패:', error.message);
   gameState = data;
 }
 async function loadStudents(){
@@ -658,6 +659,7 @@ function switchHostTab(name){
 // ---- 진행자: 사보타지 지목 투표 ----
 let hostVoteTimerInterval=null;
 async function toggleVote(){
+  if(!gameState){ alert('게임 정보를 아직 못 불러왔어. 새로고침 후 다시 시도해줘.'); return; }
   if(gameState.vote_open){
     await manualCloseVote();
     return;
@@ -747,6 +749,7 @@ function renderHostQuorum(){
   if(btn) btn.disabled = quorumCount < 10;
 }
 async function toggleQuorumOpenHost(){
+  if(!gameState){ alert('게임 정보를 아직 못 불러왔어. 새로고침 후 다시 시도해줘.'); return; }
   const newVal = !gameState.quorum_open;
   const { error } = await supabaseClient.from('game_state').update({ quorum_open:newVal }).eq('id',1);
   if(error){ alert('오류: '+error.message); return; }
@@ -838,6 +841,7 @@ function renderItemCount(){
   const svBar = document.getElementById('sv-item-bar'); if(svBar) svBar.style.width = Math.round(val/6*100)+'%';
 }
 async function adjustItemCount(delta){
+  if(!gameState){ alert('게임 정보를 아직 못 불러왔어. 새로고침 후 다시 시도해줘.'); return; }
   const newVal = Math.max(0, Math.min(6, (gameState.item_count||0)+delta));
   const { error } = await supabaseClient.from('game_state').update({ item_count:newVal }).eq('id',1);
   if(error){ alert('오류: '+error.message); return; }
@@ -848,6 +852,7 @@ async function adjustItemCount(delta){
 // ---- 진행자: 게임 타이머 ----
 let hostGameTimerInterval=null, svGameTimerInterval=null;
 async function startGame(){
+  if(!gameState){ alert('게임 정보를 아직 못 불러왔어. 새로고침 후 다시 시도해줘.'); return; }
   const mins = parseInt(document.getElementById('game-minutes').value,10) || 90;
   const endAt = new Date(Date.now()+mins*60*1000).toISOString();
   const { error } = await supabaseClient.from('game_state').update({ game_running:true, game_paused:false, game_end_at:endAt, game_remaining_seconds:null }).eq('id',1);
@@ -856,6 +861,7 @@ async function startGame(){
   renderAll();
 }
 async function togglePause(){
+  if(!gameState){ alert('게임 정보를 아직 못 불러왔어. 새로고침 후 다시 시도해줘.'); return; }
   if(!gameState.game_running) return;
   if(!gameState.game_paused){
     const remain = Math.max(0, Math.floor((new Date(gameState.game_end_at).getTime()-Date.now())/1000));

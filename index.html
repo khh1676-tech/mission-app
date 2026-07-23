@@ -163,7 +163,7 @@
       </div>
       <div class="stu-list" id="sv-stu-list"></div>
       <div class="note">※ 상태 변경 버튼은 없어 — 진행자 화면에서만 바꿀 수 있어.</div>
-      <button class="btn outline" onclick="resetLogin()">처음 화면으로 (테스트용)</button>
+      <button class="btn danger-outline" onclick="handleLogout()">로그아웃</button>
     </div>
   </div>
 
@@ -183,11 +183,11 @@
             <div class="switch" id="toggle-vote" onclick="toggleVote()"></div>
           </div>
           <div id="vote-panel" class="hidden" style="padding-top:10px;">
-            <div id="vote-active-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div id="vote-active-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
               <div class="timer sm2" id="host-vote-timer">05:00</div>
-              <button class="btn danger-outline sm" style="width:auto;padding:8px 14px;" onclick="manualCloseVote()">지금 마감</button>
+              <button class="btn danger-outline sm" style="width:auto;padding:8px 14px;flex-shrink:0;" onclick="manualCloseVote()">지금 마감</button>
             </div>
-            <div id="vote-closed-banner" class="result-banner hidden"></div>
+            <div id="vote-closed-banner" class="result-banner hidden" style="margin-top:4px;"></div>
             <div class="label">실시간 집계 / 최종 결과</div>
             <div id="vote-tally-list"></div>
           </div>
@@ -256,7 +256,7 @@
         </div>
         <div class="stu-list" id="dash-stu-list" style="margin-top:10px;"></div>
       </div>
-      <button class="btn outline" onclick="resetLogin()" style="margin-top:14px;">처음 화면으로 (테스트용)</button>
+      <button class="btn danger-outline" onclick="handleLogout()" style="margin-top:14px;">로그아웃</button>
     </div>
   </div>
 
@@ -944,6 +944,10 @@ function resetLogin(){
   localStorage.removeItem('mission_name');
   localStorage.removeItem('mission_grade');
   location.reload();
+}
+function handleLogout(){
+  if(!confirm('로그아웃할까? 다시 로그인해야 접속할 수 있어.')) return;
+  resetLogin();
 }
 
 

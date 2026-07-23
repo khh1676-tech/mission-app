@@ -67,6 +67,34 @@
   .modal-box .emoji{font-size:34px;margin-bottom:10px;}
   .modal-box h3{margin:0 0 6px;font-size:18px;}
   .modal-box p{color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;}
+  .stat-row.three{grid-template-columns:1fr 1fr 1fr;}
+  .subtabs{display:flex;gap:6px;margin-bottom:2px;}
+  .subtab{flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text-dim);font-weight:700;font-size:12.5px;cursor:pointer;text-align:center;}
+  .subtab.active{background:var(--text);color:var(--bg);border-color:var(--text);}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 4px;border-bottom:1px solid var(--border);}
+  .toggle-row:last-child{border-bottom:none;}
+  .toggle-row .t-label{font-size:14px;font-weight:700;}
+  .toggle-row .t-sub{font-size:11.5px;color:var(--text-dim);margin-top:2px;}
+  .switch{position:relative;width:44px;height:25px;border-radius:100px;background:var(--panel);border:1px solid var(--border);cursor:pointer;flex-shrink:0;}
+  .switch.on{background:var(--accent);border-color:var(--accent);}
+  .switch::after{content:'';position:absolute;top:2px;left:2px;width:19px;height:19px;background:#fff;border-radius:50%;transition:.2s;}
+  .switch.on::after{left:23px;}
+  .stu-list{max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
+  .stu-row{display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;}
+  .stu-row.readonly{cursor:default;}
+  .stu-row:hover{border-color:var(--accent);}
+  .stu-name{font-size:14px;font-weight:700;}
+  .stu-grade{font-size:11px;color:var(--text-dim);}
+  .filter-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .filter-chip{padding:6px 12px;border-radius:100px;border:1px solid var(--border);background:var(--panel);color:var(--text-dim);font-size:12px;font-weight:700;cursor:pointer;}
+  .filter-chip.active{background:var(--text);color:var(--bg);border-color:var(--text);}
+  .result-banner{background:rgba(242,169,59,.1);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px;}
+  .result-banner b{color:var(--accent);}
+  .tally-row{margin-bottom:8px;}
+  .tally-top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px;}
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .btn.danger-outline{background:transparent;border:1px solid var(--danger);color:var(--danger);}
+  .sheet-actions{display:flex;flex-direction:column;gap:8px;}
 </style>
 </head>
 <body>
@@ -98,16 +126,130 @@
     </div>
   </div>
 
-  <!-- 참여 완료 화면 (스태프/진행자용 - 학생은 아래 진짜 현황판으로 이동) -->
-  <div id="view-done" class="hidden">
-    <div class="header"><div class="eyebrow">참여 완료</div><h2 id="done-title">등록됐어</h2></div>
+  <!-- 일반 스태프 화면 -->
+  <div id="view-staffview" class="hidden">
+    <div class="header"><div class="eyebrow">일반 스태프 · 보기 전용</div><h2>현황 보기</h2></div>
     <div class="body">
       <div class="card" style="text-align:center;">
-        <span class="badge"><span class="dot"></span> 저장소 연결 확인됨</span>
-        <div class="note" style="margin-top:12px;" id="done-detail"></div>
+        <div class="label">남은 시간</div>
+        <div class="timer" id="sv-game-timer">대기중</div>
+        <div class="timer-sub" id="sv-game-sub">진행자가 시작하면 카운트다운이 시작돼</div>
       </div>
-      <div class="note">스태프/진행자 화면은 다음 단계에서 만들 거야.</div>
-      <button class="btn primary" style="background:transparent;border:1px solid var(--border);color:var(--text);" onclick="resetLogin()">처음 화면으로 (테스트용)</button>
+      <div class="stat-row three">
+        <div class="stat"><div class="num" id="sv-free-count" style="color:var(--free);">0</div><div class="cap">자유</div></div>
+        <div class="stat"><div class="num" id="sv-caught-count" style="color:var(--accent);">0</div><div class="cap">갇힘</div></div>
+        <div class="stat"><div class="num" id="sv-out-count" style="color:var(--danger);">0</div><div class="cap">탈락</div></div>
+      </div>
+      <div class="card">
+        <div class="label">확보한 아이템</div>
+        <div style="font-size:20px;font-weight:800;" id="sv-item-count">0 / 6</div>
+        <div class="progress-track"><div class="progress-fill" id="sv-item-bar" style="width:0%;"></div></div>
+      </div>
+      <div>
+        <div class="label">전체 학생 명단 (보기 전용)</div>
+        <div class="filter-row" id="sv-filters" data-target="sv-stu-list">
+          <div class="filter-chip active" data-f="all">전체</div>
+          <div class="filter-chip" data-f="free">자유</div>
+          <div class="filter-chip" data-f="caught">갇힘</div>
+          <div class="filter-chip" data-f="out">탈락</div>
+        </div>
+      </div>
+      <div class="stu-list" id="sv-stu-list"></div>
+      <div class="note">※ 상태 변경 버튼은 없어 — 진행자 화면에서만 바꿀 수 있어.</div>
+      <button class="btn outline" onclick="resetLogin()">처음 화면으로 (테스트용)</button>
+    </div>
+  </div>
+
+  <!-- 진행자 화면 -->
+  <div id="view-host" class="hidden">
+    <div class="header"><div class="eyebrow">진행자 전용</div><h2>운영 콘솔</h2></div>
+    <div class="body">
+      <div class="subtabs">
+        <div class="subtab active" data-sub="checkin" onclick="switchHostTab('checkin')">체크인</div>
+        <div class="subtab" data-sub="dashboard" onclick="switchHostTab('dashboard')">대시보드</div>
+      </div>
+
+      <div id="host-checkin">
+        <div class="card">
+          <div class="toggle-row">
+            <div><div class="t-label">사보타지 지목 투표</div><div class="t-sub">켜면 5분 카운트다운 시작</div></div>
+            <div class="switch" id="toggle-vote" onclick="toggleVote()"></div>
+          </div>
+          <div id="vote-panel" class="hidden" style="padding-top:10px;">
+            <div id="vote-active-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <div class="timer sm2" id="host-vote-timer">05:00</div>
+              <button class="btn danger-outline sm" style="width:auto;padding:8px 14px;" onclick="manualCloseVote()">지금 마감</button>
+            </div>
+            <div id="vote-closed-banner" class="result-banner hidden"></div>
+            <div class="label">실시간 집계 / 최종 결과</div>
+            <div id="vote-tally-list"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="toggle-row">
+            <div><div class="t-label">정족수 신청 접수</div><div class="t-sub">열면 학생들이 소집 신청 가능</div></div>
+            <div class="switch on" id="toggle-quorum" onclick="toggleQuorumOpenHost()"></div>
+          </div>
+          <div style="padding-top:10px;">
+            <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px;">
+              <span style="font-size:24px;font-weight:800;font-family:'SF Mono',monospace;" id="host-quorum-count">0</span>
+              <span style="color:var(--text-dim);font-size:13px;">/ 10명 신청됨</span>
+            </div>
+            <button class="btn primary sm" id="call-meeting-btn" disabled onclick="callMeeting()">회의 진행 (학생들에게 소집 알림)</button>
+          </div>
+        </div>
+
+        <div><div class="label">학생 검색 · 탭해서 상태 변경</div><input type="text" placeholder="이름 검색" id="staff-search" oninput="renderHostStuList()"></div>
+        <div class="stu-list" id="host-stu-list" style="margin-top:10px;"></div>
+      </div>
+
+      <div id="host-dashboard" class="hidden">
+        <div class="card">
+          <div class="label">게임 타이머</div>
+          <div id="game-setup">
+            <div class="row-2">
+              <input type="text" id="game-minutes" value="90" style="text-align:center;">
+              <button class="btn primary sm" onclick="startGame()">게임 시작</button>
+            </div>
+            <div class="note">전체 진행 시간(분)을 입력하고 시작해줘</div>
+          </div>
+          <div id="game-running" class="hidden">
+            <div class="timer sm2" id="host-game-timer">90:00</div>
+            <div class="row-2" style="margin-top:10px;">
+              <button class="btn outline sm" id="pause-btn" onclick="togglePause()">일시정지</button>
+              <button class="btn danger-outline sm" onclick="endGame()">종료</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <div class="label">아이템 확보 개수</div>
+          <div style="display:flex;align-items:center;gap:12px;justify-content:center;">
+            <button class="btn outline sm" style="width:44px;" onclick="adjustItemCount(-1)">−</button>
+            <div style="font-size:22px;font-weight:800;font-family:'SF Mono',monospace;" id="host-item-count">0 / 6</div>
+            <button class="btn outline sm" style="width:44px;" onclick="adjustItemCount(1)">＋</button>
+          </div>
+        </div>
+
+        <div class="stat-row three" style="margin-top:16px;">
+          <div class="stat"><div class="num" id="hd-free-count" style="color:var(--free);">0</div><div class="cap">자유</div></div>
+          <div class="stat"><div class="num" id="hd-caught-count" style="color:var(--accent);">0</div><div class="cap">갇힘</div></div>
+          <div class="stat"><div class="num" id="hd-out-count" style="color:var(--danger);">0</div><div class="cap">탈락</div></div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div class="label">상태별 필터</div>
+          <div class="filter-row" id="dash-filters" data-target="dash-stu-list">
+            <div class="filter-chip active" data-f="all">전체</div>
+            <div class="filter-chip" data-f="free">자유</div>
+            <div class="filter-chip" data-f="caught">갇힘</div>
+            <div class="filter-chip" data-f="out">탈락</div>
+          </div>
+        </div>
+        <div class="stu-list" id="dash-stu-list" style="margin-top:10px;"></div>
+      </div>
+      <button class="btn outline" onclick="resetLogin()" style="margin-top:14px;">처음 화면으로 (테스트용)</button>
     </div>
   </div>
 
@@ -160,6 +302,20 @@
     <div class="vote-list" id="vote-list"></div>
     <button class="btn primary" style="margin-top:12px;" onclick="submitVote()">투표 제출</button>
     <button class="btn outline" style="margin-top:8px;" onclick="closeVoteSheet()">닫기</button>
+  </div>
+</div>
+
+<!-- 학생 상태 변경 시트 (진행자용) -->
+<div class="sheet-backdrop" id="status-sheet">
+  <div class="sheet">
+    <h3 id="status-sheet-name">2학년 이서준</h3>
+    <div class="sub">상태를 변경해줘</div>
+    <div class="sheet-actions">
+      <button class="btn primary" onclick="setStudentStatus('caught')">🔒 잡음 (강당 이송)</button>
+      <button class="btn outline" onclick="setStudentStatus('free')">✅ 자유로 전환 (탈출/해제)</button>
+      <button class="btn danger-outline" onclick="setStudentStatus('out')">❌ 탈락(OUT) 처리</button>
+    </div>
+    <button class="btn outline" style="margin-top:10px;" onclick="closeStatusSheet()">닫기</button>
   </div>
 </div>
 
@@ -225,11 +381,11 @@ async function handleLogin(){
     if(matchedRole === 'host'){
       localStorage.setItem('mission_role', 'host');
       localStorage.setItem('mission_name', name);
-      showDone('진행자로 참여했어', `이름: ${name} / 역할: 진행자`);
+      showHostConsole(name);
     } else {
       localStorage.setItem('mission_role', 'staff');
       localStorage.setItem('mission_name', name);
-      showDone('일반 스태프로 참여했어', `이름: ${name} / 역할: 일반 스태프`);
+      showStaffView(name);
     }
     btn.disabled = false;
     btn.textContent = '임무 참여하기 →';
@@ -271,7 +427,6 @@ let gameTimerInterval=null, voteTimerInterval=null;
 
 async function showStudentDashboard(id, grade, name){
   document.getElementById('view-login').classList.add('hidden');
-  document.getElementById('view-done').classList.add('hidden');
   document.getElementById('view-student').classList.remove('hidden');
   myStudentId = parseInt(id,10);
   myGrade = grade; myName = name;
@@ -298,22 +453,41 @@ async function loadStudents(){
   studentsCache = data || [];
 }
 async function loadMyVote(){
+  if(!myStudentId){ myVoteTargetId = null; return; }
   const { data } = await supabaseClient.from('votes').select('target_id').eq('voter_id', myStudentId).maybeSingle();
   myVoteTargetId = data ? data.target_id : null;
 }
 async function loadQuorum(){
   const { count } = await supabaseClient.from('quorum_applications').select('*', {count:'exact', head:true});
   quorumCount = count || 0;
+  if(!myStudentId){ myQuorumApplied = false; return; }
   const { data } = await supabaseClient.from('quorum_applications').select('id').eq('student_id', myStudentId).maybeSingle();
   myQuorumApplied = !!data;
 }
 
+let lastMeetingAt;
+function checkMeetingPopup(){
+  if(!gameState) return;
+  if(lastMeetingAt === undefined){ lastMeetingAt = gameState.meeting_called_at; return; }
+  if(gameState.meeting_called_at && gameState.meeting_called_at !== lastMeetingAt){
+    document.getElementById('meeting-modal').classList.add('show');
+  }
+  lastMeetingAt = gameState.meeting_called_at;
+}
 function renderAll(){
+  checkMeetingPopup();
   renderMyStatus();
   renderCounts();
   renderGameTimer();
   renderVoteUI();
   renderQuorumUI();
+  renderHostVotePanel();
+  renderHostQuorum();
+  renderHostStuList();
+  renderHostDashboardStats();
+  renderItemCount();
+  renderHostGameTimer();
+  renderSvGameTimer();
 }
 function renderMyStatus(){
   const me = studentsCache.find(s=>s.id===myStudentId);
@@ -439,27 +613,316 @@ async function quorumToggle(){
 
 function closeMeetingModal(){ document.getElementById('meeting-modal').classList.remove('show'); }
 
-// ---- 실시간 구독: 다른 사람 화면에서 바뀐 게 내 화면에도 바로 반영되게 ----
+// ---- 실시간 구독: 다른 사람 화면에서 바뀐 게 내 화면에도 바로 반영되게 (학생/스태프/진행자 공통) ----
+let realtimeSubscribed = false;
 function setupRealtime(){
+  if(realtimeSubscribed) return;
+  realtimeSubscribed = true;
   supabaseClient.channel('mission-updates')
     .on('postgres_changes', { event:'*', schema:'public', table:'game_state' }, (payload)=>{
       gameState = payload.new;
-      renderCounts(); renderGameTimer(); renderVoteUI(); renderQuorumUI();
+      renderAll();
     })
     .on('postgres_changes', { event:'*', schema:'public', table:'students' }, ()=>{
-      loadStudents().then(()=>{ renderMyStatus(); renderCounts(); });
+      loadStudents().then(renderAll);
     })
     .on('postgres_changes', { event:'*', schema:'public', table:'quorum_applications' }, ()=>{
-      loadQuorum().then(renderQuorumUI);
+      loadQuorum().then(renderAll);
+    })
+    .on('postgres_changes', { event:'*', schema:'public', table:'votes' }, ()=>{
+      renderHostVotePanel();
     })
     .subscribe();
 }
 
-function showDone(title, detail){
+// ===== 진행자 / 일반 스태프 화면 진입 =====
+async function showHostConsole(name){
   document.getElementById('view-login').classList.add('hidden');
-  document.getElementById('view-done').classList.remove('hidden');
-  document.getElementById('done-title').textContent = title;
-  document.getElementById('done-detail').textContent = detail;
+  document.getElementById('view-host').classList.remove('hidden');
+  await refreshAll();
+  setupRealtime();
+}
+async function showStaffView(name){
+  document.getElementById('view-login').classList.add('hidden');
+  document.getElementById('view-staffview').classList.remove('hidden');
+  await refreshAll();
+  setupRealtime();
+}
+function switchHostTab(name){
+  document.querySelectorAll('.subtab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`.subtab[data-sub="${name}"]`).classList.add('active');
+  document.getElementById('host-checkin').classList.toggle('hidden', name!=='checkin');
+  document.getElementById('host-dashboard').classList.toggle('hidden', name!=='dashboard');
+}
+
+// ---- 진행자: 사보타지 지목 투표 ----
+let hostVoteTimerInterval=null;
+async function toggleVote(){
+  if(gameState.vote_open){
+    await manualCloseVote();
+    return;
+  }
+  const endAt = new Date(Date.now() + 5*60*1000).toISOString();
+  const { error } = await supabaseClient.from('game_state').update({ vote_open:true, vote_end_at: endAt }).eq('id',1);
+  if(error){ alert('오류: '+error.message); return; }
+  await loadGameState();
+  renderHostVotePanel();
+}
+async function manualCloseVote(){
+  const { error } = await supabaseClient.from('game_state').update({ vote_open:false }).eq('id',1);
+  if(error){ alert('오류: '+error.message); return; }
+  await loadGameState();
+  renderHostVotePanel();
+}
+async function loadVoteRows(){
+  const { data } = await supabaseClient.from('votes').select('target_id');
+  return data || [];
+}
+function renderVoteTallyList(rows){
+  const counts = {};
+  rows.forEach(v=>{ counts[v.target_id] = (counts[v.target_id]||0)+1; });
+  const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const max = entries.length ? entries[0][1] : 1;
+  const list = document.getElementById('vote-tally-list');
+  if(list){
+    list.innerHTML = entries.map(([id,count])=>{
+      const s = studentsCache.find(x=>x.id==id);
+      const label = s ? `${s.grade}학년 ${s.name}` : `#${id}`;
+      const pct = Math.round(count/max*100);
+      return `<div class="tally-row"><div class="tally-top"><span>${label}</span><span style="font-weight:800;">${count}표</span></div>
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:var(--accent);"></div></div></div>`;
+    }).join('') || '<div class="note">아직 투표 없음</div>';
+  }
+  return entries;
+}
+function renderHostVotePanel(){
+  if(!gameState) return;
+  const panel = document.getElementById('vote-panel');
+  const toggle = document.getElementById('toggle-vote');
+  if(!panel || !toggle) return;
+  clearInterval(hostVoteTimerInterval);
+  if(!gameState.vote_end_at){
+    panel.classList.add('hidden');
+    toggle.classList.remove('on');
+    return;
+  }
+  panel.classList.remove('hidden');
+  toggle.classList.toggle('on', gameState.vote_open);
+  const activeRow = document.getElementById('vote-active-row');
+  const closedBanner = document.getElementById('vote-closed-banner');
+  loadVoteRows().then(rows=>{
+    const entries = renderVoteTallyList(rows);
+    if(gameState.vote_open){
+      activeRow.classList.remove('hidden');
+      closedBanner.classList.add('hidden');
+      const endAt = new Date(gameState.vote_end_at).getTime();
+      const timerEl = document.getElementById('host-vote-timer');
+      function tick(){
+        const remain = Math.max(0, Math.floor((endAt-Date.now())/1000));
+        timerEl.textContent = formatTime(remain);
+        if(remain<=0){ clearInterval(hostVoteTimerInterval); manualCloseVote(); }
+      }
+      tick();
+      hostVoteTimerInterval = setInterval(tick,1000);
+    } else {
+      activeRow.classList.add('hidden');
+      closedBanner.classList.remove('hidden');
+      if(entries.length){
+        const top = studentsCache.find(x=>x.id==entries[0][0]);
+        closedBanner.innerHTML = `투표 종료 — 최다 득표: <b>${top ? `${top.grade}학년 ${top.name}` : '?'}</b> (${entries[0][1]}표)`;
+      } else {
+        closedBanner.innerHTML = '투표 종료 — 제출된 투표가 없어';
+      }
+    }
+  });
+}
+
+// ---- 진행자: 정족수 접수 / 회의 소집 ----
+function renderHostQuorum(){
+  const toggle = document.getElementById('toggle-quorum');
+  if(toggle) toggle.classList.toggle('on', !!(gameState && gameState.quorum_open));
+  const countEl = document.getElementById('host-quorum-count');
+  if(countEl) countEl.textContent = quorumCount;
+  const btn = document.getElementById('call-meeting-btn');
+  if(btn) btn.disabled = quorumCount < 10;
+}
+async function toggleQuorumOpenHost(){
+  const newVal = !gameState.quorum_open;
+  const { error } = await supabaseClient.from('game_state').update({ quorum_open:newVal }).eq('id',1);
+  if(error){ alert('오류: '+error.message); return; }
+  await loadGameState();
+  renderHostQuorum();
+}
+async function callMeeting(){
+  if(quorumCount < 10) return;
+  const { error: e1 } = await supabaseClient.from('game_state').update({ meeting_called_at: new Date().toISOString() }).eq('id',1);
+  const { error: e2 } = await supabaseClient.from('quorum_applications').delete().gte('student_id', 0);
+  if(e1 || e2){ alert('오류: ' + (e1?.message || e2?.message)); return; }
+  await loadGameState();
+  await loadQuorum();
+  renderHostQuorum();
+}
+
+// ---- 진행자: 학생 체크인(상태 변경) ----
+const STATUS_LABEL = { free:'자유', caught:'갇힘', out:'탈락(OUT)' };
+function renderHostStuList(){
+  const searchEl = document.getElementById('staff-search');
+  const list = document.getElementById('host-stu-list');
+  if(!list) return;
+  const q = searchEl ? searchEl.value.trim() : '';
+  list.innerHTML = '';
+  studentsCache.filter(s=>s.name.includes(q)).forEach(s=>{
+    const row = document.createElement('div');
+    row.className = 'stu-row';
+    row.innerHTML = `<div><div class="stu-name">${s.name}</div><div class="stu-grade">${s.grade}학년</div></div>
+      <span class="badge ${s.status}"><span class="dot"></span> ${STATUS_LABEL[s.status]||s.status}</span>`;
+    row.onclick = ()=> openStatusSheet(s);
+    list.appendChild(row);
+  });
+}
+let activeStatusStudentId=null;
+function openStatusSheet(s){
+  activeStatusStudentId = s.id;
+  document.getElementById('status-sheet-name').textContent = `${s.grade}학년 ${s.name}`;
+  document.getElementById('status-sheet').classList.add('show');
+}
+function closeStatusSheet(){ document.getElementById('status-sheet').classList.remove('show'); }
+async function setStudentStatus(newStatus){
+  const { error } = await supabaseClient.from('students').update({ status:newStatus }).eq('id', activeStatusStudentId);
+  if(error){ alert('상태 변경 실패: '+error.message); }
+  closeStatusSheet();
+  await loadStudents();
+  renderAll();
+}
+
+// ---- 읽기 전용 명단 (일반 스태프 / 진행자 대시보드 공용) ----
+function renderReadonlyList(listId, filter){
+  const list = document.getElementById(listId);
+  if(!list) return;
+  const filtered = filter==='all' ? studentsCache : studentsCache.filter(s=>s.status===filter);
+  list.innerHTML = filtered.map(s=>`<div class="stu-row readonly"><div><div class="stu-name">${s.name}</div><div class="stu-grade">${s.grade}학년</div></div>
+    <span class="badge ${s.status}"><span class="dot"></span> ${STATUS_LABEL[s.status]||s.status}</span></div>`).join('');
+}
+document.querySelectorAll('.filter-row[data-target]').forEach(row=>{
+  row.addEventListener('click', (e)=>{
+    const chip = e.target.closest('.filter-chip');
+    if(!chip) return;
+    row.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    renderReadonlyList(row.dataset.target, chip.dataset.f);
+  });
+});
+function renderHostDashboardStats(){
+  const free = studentsCache.filter(s=>s.status==='free').length;
+  const caught = studentsCache.filter(s=>s.status==='caught').length;
+  const out = studentsCache.filter(s=>s.status==='out').length;
+  ['hd','sv'].forEach(prefix=>{
+    const f = document.getElementById(prefix+'-free-count');
+    const c = document.getElementById(prefix+'-caught-count');
+    const o = document.getElementById(prefix+'-out-count');
+    if(f) f.textContent = free;
+    if(c) c.textContent = caught;
+    if(o) o.textContent = out;
+  });
+  const dashActive = document.querySelector('#dash-filters .filter-chip.active');
+  if(dashActive) renderReadonlyList('dash-stu-list', dashActive.dataset.f);
+  const svActive = document.querySelector('#sv-filters .filter-chip.active');
+  if(svActive) renderReadonlyList('sv-stu-list', svActive.dataset.f);
+}
+
+// ---- 아이템 개수 ----
+function renderItemCount(){
+  const val = gameState ? (gameState.item_count||0) : 0;
+  const hostEl = document.getElementById('host-item-count'); if(hostEl) hostEl.textContent = `${val} / 6`;
+  const svEl = document.getElementById('sv-item-count'); if(svEl) svEl.textContent = `${val} / 6`;
+  const svBar = document.getElementById('sv-item-bar'); if(svBar) svBar.style.width = Math.round(val/6*100)+'%';
+}
+async function adjustItemCount(delta){
+  const newVal = Math.max(0, Math.min(6, (gameState.item_count||0)+delta));
+  const { error } = await supabaseClient.from('game_state').update({ item_count:newVal }).eq('id',1);
+  if(error){ alert('오류: '+error.message); return; }
+  await loadGameState();
+  renderAll();
+}
+
+// ---- 진행자: 게임 타이머 ----
+let hostGameTimerInterval=null, svGameTimerInterval=null;
+async function startGame(){
+  const mins = parseInt(document.getElementById('game-minutes').value,10) || 90;
+  const endAt = new Date(Date.now()+mins*60*1000).toISOString();
+  const { error } = await supabaseClient.from('game_state').update({ game_running:true, game_paused:false, game_end_at:endAt, game_remaining_seconds:null }).eq('id',1);
+  if(error){ alert('오류: '+error.message); return; }
+  await loadGameState();
+  renderAll();
+}
+async function togglePause(){
+  if(!gameState.game_running) return;
+  if(!gameState.game_paused){
+    const remain = Math.max(0, Math.floor((new Date(gameState.game_end_at).getTime()-Date.now())/1000));
+    await supabaseClient.from('game_state').update({ game_paused:true, game_remaining_seconds:remain }).eq('id',1);
+  } else {
+    const newEnd = new Date(Date.now() + (gameState.game_remaining_seconds||0)*1000).toISOString();
+    await supabaseClient.from('game_state').update({ game_paused:false, game_end_at:newEnd, game_remaining_seconds:null }).eq('id',1);
+  }
+  await loadGameState();
+  renderAll();
+}
+async function endGame(){
+  await supabaseClient.from('game_state').update({ game_running:false, game_paused:false, game_end_at:null, game_remaining_seconds:null }).eq('id',1);
+  await loadGameState();
+  renderAll();
+}
+function renderHostGameTimer(){
+  clearInterval(hostGameTimerInterval);
+  const setupEl = document.getElementById('game-setup');
+  const runningEl = document.getElementById('game-running');
+  const timerEl = document.getElementById('host-game-timer');
+  const pauseBtn = document.getElementById('pause-btn');
+  if(!setupEl || !runningEl || !gameState) return;
+  if(!gameState.game_running){
+    setupEl.classList.remove('hidden');
+    runningEl.classList.add('hidden');
+    return;
+  }
+  setupEl.classList.add('hidden');
+  runningEl.classList.remove('hidden');
+  pauseBtn.textContent = gameState.game_paused ? '재개' : '일시정지';
+  if(gameState.game_paused){
+    timerEl.textContent = formatTime(gameState.game_remaining_seconds||0);
+    return;
+  }
+  const endAt = new Date(gameState.game_end_at).getTime();
+  function tick(){
+    const remain = Math.max(0, Math.floor((endAt-Date.now())/1000));
+    timerEl.textContent = formatTime(remain);
+    if(remain<=0) clearInterval(hostGameTimerInterval);
+  }
+  tick();
+  hostGameTimerInterval = setInterval(tick,1000);
+}
+function renderSvGameTimer(){
+  clearInterval(svGameTimerInterval);
+  const timerEl = document.getElementById('sv-game-timer');
+  const subEl = document.getElementById('sv-game-sub');
+  if(!timerEl || !gameState) return;
+  if(!gameState.game_running || !gameState.game_end_at){
+    timerEl.textContent = '대기중';
+    subEl.textContent = '진행자가 시작하면 카운트다운이 시작돼';
+    return;
+  }
+  subEl.textContent = gameState.game_paused ? '일시정지됨' : '실플레이 진행 중';
+  if(gameState.game_paused){
+    timerEl.textContent = formatTime(gameState.game_remaining_seconds||0);
+    return;
+  }
+  const endAt = new Date(gameState.game_end_at).getTime();
+  function tick(){
+    const remain = Math.max(0, Math.floor((endAt-Date.now())/1000));
+    timerEl.textContent = formatTime(remain);
+    if(remain<=0) clearInterval(svGameTimerInterval);
+  }
+  tick();
+  svGameTimerInterval = setInterval(tick,1000);
 }
 
 function resetLogin(){
@@ -467,10 +930,9 @@ function resetLogin(){
   localStorage.removeItem('mission_student_id');
   localStorage.removeItem('mission_name');
   localStorage.removeItem('mission_grade');
-  document.getElementById('view-done').classList.add('hidden');
-  document.getElementById('view-login').classList.remove('hidden');
-  document.getElementById('login-name').value='';
+  location.reload();
 }
+
 
 // 페이지 열자마자: 이미 참여한 기록이 있으면 자동으로 인식
 (function checkExisting(){
@@ -482,9 +944,9 @@ function resetLogin(){
     const id = localStorage.getItem('mission_student_id');
     showStudentDashboard(id, grade, name);
   } else if(role === 'host'){
-    showDone('진행자로 인식됐어', `이름: ${name} / 역할: 진행자`);
+    showHostConsole(name);
   } else if(role === 'staff'){
-    showDone('일반 스태프로 인식됐어', `이름: ${name} / 역할: 일반 스태프`);
+    showStaffView(name);
   }
 })();
 </script>

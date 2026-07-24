@@ -108,6 +108,9 @@
   .conn-badge.offline{color:var(--danger);}
   .winner-banner{display:none;background:linear-gradient(135deg,var(--accent),#ffcf70);color:#1a1204;border-radius:14px;padding:16px;text-align:center;font-weight:800;font-size:16px;line-height:1.4;}
   .winner-banner.show{display:block;}
+  .meeting-banner{display:none;background:rgba(242,169,59,.12);border:1px solid var(--accent);border-radius:12px;padding:12px 14px;text-align:center;font-size:13px;line-height:1.5;}
+  .meeting-banner.show{display:block;}
+  .meeting-banner b{font-family:'SF Mono','Consolas',monospace;font-size:15px;}
   #host-checkin, #host-dashboard{display:flex;flex-direction:column;gap:16px;}
 </style>
 </head>
@@ -146,6 +149,7 @@
     <div class="body">
       <div class="conn-badge" id="conn-badge-sv"><span class="conn-dot"></span> 연결됨</div>
       <div class="winner-banner" id="winner-banner-sv"></div>
+      <div class="meeting-banner" id="meeting-banner-sv"></div>
       <div class="card" style="text-align:center;">
         <div class="label">남은 시간</div>
         <div class="timer" id="sv-game-timer">대기중</div>
@@ -182,6 +186,7 @@
     <div class="body">
       <div class="conn-badge" id="conn-badge-host"><span class="conn-dot"></span> 연결됨</div>
       <div class="winner-banner" id="winner-banner-host"></div>
+      <div class="meeting-banner" id="meeting-banner-host"></div>
       <div class="subtabs">
         <div class="subtab active" data-sub="checkin" onclick="switchHostTab('checkin')">체크인</div>
         <div class="subtab" data-sub="dashboard" onclick="switchHostTab('dashboard')">대시보드</div>
@@ -286,6 +291,7 @@
     <div class="body">
       <div class="conn-badge" id="conn-badge-student"><span class="conn-dot"></span> 연결됨</div>
       <div class="winner-banner" id="winner-banner-student"></div>
+      <div class="meeting-banner" id="meeting-banner-student"></div>
       <div class="card" style="text-align:center;">
         <div class="label">남은 시간</div>
         <div class="timer" id="student-game-timer">대기중</div>
@@ -353,7 +359,7 @@
   <div class="modal-box">
     <div class="emoji">🔔</div>
     <h3>의회가 소집되었습니다</h3>
-    <p>정족수 10명이 채워져 회의가 시작돼요.<br>강당으로 모여주세요.</p>
+    <p>정족수 10명이 채워져 회의가 시작돼요.<br><b>10분 안에</b> 강당으로 모여주세요. 늦으면 감옥으로 이송될 수 있어요.</p>
     <button class="btn primary" onclick="closeMeetingModal()">확인</button>
   </div>
 </div>
@@ -549,6 +555,34 @@ function renderWinnerBanner(){
   const finalBtn = document.getElementById('final-mission-btn');
   if(finalBtn) finalBtn.disabled = !gameState || gameState.item_count < 6 || !!gameState.winner;
 }
+let meetingTimerInterval=null;
+function renderMeetingBanner(){
+  clearInterval(meetingTimerInterval);
+  const active = gameState && gameState.meeting_called_at;
+  if(!active){
+    ['student','sv','host'].forEach(prefix=>{
+      const el = document.getElementById('meeting-banner-'+prefix);
+      if(el){ el.classList.remove('show'); el.innerHTML=''; }
+    });
+    return;
+  }
+  const endAt = new Date(gameState.meeting_called_at).getTime() + 10*60*1000;
+  function tick(){
+    const remain = Math.max(0, Math.floor((endAt - Date.now())/1000));
+    const text = remain > 0
+      ? `🔔 의회 소집 — 강당 도착 마감까지 <b>${formatTime(remain)}</b>`
+      : `⏰ 의회 소집 마감 시간이 지났어 — 강당에 안 온 학생은 진행자가 확인해줘`;
+    ['student','sv','host'].forEach(prefix=>{
+      const el = document.getElementById('meeting-banner-'+prefix);
+      if(!el) return;
+      el.classList.add('show');
+      el.innerHTML = text;
+    });
+    if(remain<=0) clearInterval(meetingTimerInterval);
+  }
+  tick();
+  meetingTimerInterval = setInterval(tick,1000);
+}
 async function finalMissionComplete(){
   if(!gameState || gameState.item_count < 6 || gameState.winner) return;
   const { error } = await supabaseClient.from('game_state').update({
@@ -586,6 +620,7 @@ function renderAll(){
   renderHostGameTimer();
   renderSvGameTimer();
   renderWinnerBanner();
+  renderMeetingBanner();
 }
 function renderMyStatus(){
   const me = studentsCache.find(s=>s.id===myStudentId);

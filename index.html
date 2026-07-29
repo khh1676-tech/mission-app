@@ -195,7 +195,7 @@
       <div id="host-checkin">
         <div class="card">
           <div class="toggle-row">
-            <div><div class="t-label">사보타지 지목 투표</div><div class="t-sub">켜면 5분 카운트다운 시작</div></div>
+            <div><div class="t-label">투표</div><div class="t-sub">켜면 5분 카운트다운 시작</div></div>
             <div class="switch" id="toggle-vote" onclick="toggleVote()"></div>
           </div>
           <div id="vote-panel" class="hidden" style="padding-top:10px;">
@@ -259,7 +259,7 @@
             <div style="font-size:22px;font-weight:800;font-family:'SF Mono',monospace;" id="host-item-count">0 / 6</div>
             <button class="btn outline sm" style="width:44px;" onclick="adjustItemCount(1)">＋</button>
           </div>
-          <button class="btn primary sm" id="final-mission-btn" style="margin-top:10px;" disabled onclick="finalMissionComplete()">🏆 최종 미션 완료 (시민 승리 선언)</button>
+          <button class="btn primary sm" id="final-mission-btn" style="margin-top:10px;" disabled onclick="finalMissionComplete()">🏆 최종 미션 완료 (미션 성공 선언)</button>
           <div class="note">※ 아이템 6개 다 모이면 활성화돼. 강당에서 조합 완료됐을 때 눌러줘.</div>
         </div>
 
@@ -307,7 +307,7 @@
       </div>
 
       <div class="card">
-        <div class="label">사보타지 지목 투표</div>
+        <div class="label">투표</div>
         <span class="badge free" id="vote-status-badge"><span class="dot"></span> 투표 대기중</span>
         <div id="student-vote-timer-wrap" class="hidden" style="margin:10px 0;">
           <div class="timer sm2" id="student-vote-timer">05:00</div>
@@ -332,7 +332,7 @@
 <!-- 투표 시트 -->
 <div class="sheet-backdrop" id="vote-sheet">
   <div class="sheet">
-    <h3>사보타지로 의심되는 사람</h3>
+    <h3>투표</h3>
     <div class="sub" id="vote-sheet-sub">한 명을 선택하고 투표를 제출해줘 (마감 전까지 변경 가능)</div>
     <div class="vote-list" id="vote-list"></div>
     <button class="btn primary" style="margin-top:12px;" onclick="submitVote()">투표 제출</button>
@@ -522,8 +522,8 @@ function checkMeetingPopup(){
 }
 
 const WINNER_TEXT = {
-  citizen: { emoji:'🏆', title:'시민 승리!', desc:'아이템 6개를 모두 모아 최종 미션을 완료했어요.' },
-  sabotage: { emoji:'😈', title:'사보타지 승리!', desc:'시민 절반 이상이 강당에 갇혀버렸어요.' }
+  success: { emoji:'🏆', title:'미션 성공!', desc:'아이템 6개를 모두 모아 최종 미션을 완료했어요.' },
+  fail: { emoji:'🔒', title:'미션 실패!', desc:'참여자 절반 이상이 강당에 갇혔어요.' }
 };
 let lastWinnerAt;
 function checkWinnerPopup(){
@@ -586,7 +586,7 @@ function renderMeetingBanner(){
 async function finalMissionComplete(){
   if(!gameState || gameState.item_count < 6 || gameState.winner) return;
   const { error } = await supabaseClient.from('game_state').update({
-    winner:'citizen', game_ended_at:new Date().toISOString(), game_running:false
+    winner:'success', game_ended_at:new Date().toISOString(), game_running:false
   }).eq('id',1);
   if(error){ alert('오류: '+error.message); return; }
   await loadGameState();
@@ -598,7 +598,7 @@ async function checkWinCondition(){
   const caught = active.filter(s=>s.status==='caught').length;
   if(active.length>0 && caught >= Math.ceil(active.length/2)){
     const { error } = await supabaseClient.from('game_state').update({
-      winner:'sabotage', game_ended_at:new Date().toISOString(), game_running:false
+      winner:'fail', game_ended_at:new Date().toISOString(), game_running:false
     }).eq('id',1);
     if(!error) await loadGameState();
   }
@@ -801,7 +801,7 @@ function switchHostTab(name){
   document.getElementById('host-dashboard').classList.toggle('hidden', name!=='dashboard');
 }
 
-// ---- 진행자: 사보타지 지목 투표 ----
+// ---- 진행자: 투표 ----
 let hostVoteTimerInterval=null;
 async function toggleVote(){
   if(!gameState){ alert('게임 정보를 아직 못 불러왔어. 새로고침 후 다시 시도해줘.'); return; }

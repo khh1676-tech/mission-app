@@ -75,6 +75,7 @@
   .modal-box h3{margin:0 0 6px;font-size:18px;}
   .modal-box p{color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;}
   .stat-row.three{grid-template-columns:1fr 1fr 1fr;}
+  .stat-row.single{grid-template-columns:1fr;}
   .subtabs{display:flex;gap:6px;margin-bottom:2px;}
   .subtab{flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text-dim);font-weight:700;font-size:12.5px;cursor:pointer;text-align:center;}
   .subtab.active{background:var(--text);color:var(--bg);border-color:var(--text);}
@@ -301,8 +302,8 @@
         <div class="label">나의 상태</div>
         <span class="badge free" id="my-status-badge"><span class="dot"></span> 자유</span>
       </div>
-      <div class="stat-row">
-        <div class="stat"><div class="num" id="caught-count">0<span style="font-size:14px;color:var(--text-dim);">/0</span></div><div class="cap">강당에 갇힌 인원</div></div>
+      <div class="stat-row single" id="student-stats-row">
+        <div class="stat hidden" id="caught-stat-card"><div class="num" id="caught-count">0<span style="font-size:14px;color:var(--text-dim);">/0</span></div><div class="cap">강당에 갇힌 인원</div></div>
         <div class="stat"><div class="num" id="item-count-display">0<span style="font-size:14px;color:var(--text-dim);">/6</span></div><div class="cap">확보한 아이템</div></div>
       </div>
 
@@ -636,6 +637,17 @@ function renderCounts(){
   const caught = studentsCache.filter(s=>s.status==='caught').length;
   document.getElementById('caught-count').innerHTML = `${caught}<span style="font-size:14px;color:var(--text-dim);">/${total}</span>`;
   document.getElementById('item-count-display').innerHTML = `${gameState ? gameState.item_count : 0}<span style="font-size:14px;color:var(--text-dim);">/6</span>`;
+  const caughtCard = document.getElementById('caught-stat-card');
+  const statsRow = document.getElementById('student-stats-row');
+  if(caughtCard && statsRow){
+    if(caught > 0){
+      caughtCard.classList.remove('hidden');
+      statsRow.classList.remove('single');
+    } else {
+      caughtCard.classList.add('hidden');
+      statsRow.classList.add('single');
+    }
+  }
 }
 function renderGameTimer(){
   clearInterval(gameTimerInterval);
